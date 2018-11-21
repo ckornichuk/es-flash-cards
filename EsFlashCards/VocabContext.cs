@@ -7,6 +7,7 @@ namespace EsFlashCards
 {
     public class VocabContext : DbContext
     {
+        public DbSet<Pronouns> Pronouns { get; set; }
         public DbSet<Gerunds> Gerunds { get; set; }
         public DbSet<Infinitives> Infinitives { get; set; }
         public DbSet<Moods> Moods { get; set; }
@@ -19,31 +20,32 @@ namespace EsFlashCards
             // Doing this because db in debug folder is empty?
             optionsBuilder.UseSqlite($@"Data Source=..\..\..\vocab.db");
         }
-
-        protected override void OnModelCreating(ModelBuilder builder)
-        {
-            builder.Entity<Verbs>().HasKey(t => new { t.Infinitive, t.Mood, t.Tense });
-        }
     }
+}
+
+public class Pronouns
+{
+    [Key]
+    public int rowid { get; set; }
+    public string Person { get; set; }
+    public string Spanish { get; set; }
+    public string English { get; set; }
 }
 
 public class Gerunds
 {
     [Key]
+    public int rowid { get; set; }
     public String Infinitive { get; set; }
-
-
     public String Gerund { get; set; }
-
     public String GerundEnglish { get; set; }
-
 }
 
 public partial class Infinitives
 {
     [Key]
+    public int rowid { get; set; }
     public String Infinitive { get; set; }
-
     public String InfinitiveEnglish { get; set; }
 
 }
@@ -51,52 +53,36 @@ public partial class Infinitives
 public partial class Moods
 {
     [Key]
+    public int rowid { get; set; }
     public String Mood { get; set; }
-
     public String MoodEnglish { get; set; }
-
 }
 
 public partial class PastParticiples
 {
     [Key]
+    public int rowid { get; set; }
     public String Infinitive { get; set; }
-
-
     public String PastParticiple { get; set; }
-
     public String PastParticipleEnglish { get; set; }
-
 }
 
 public partial class Tenses
 {
     [Key]
+    public int rowid { get; set; }
     public String Tense { get; set; }
-
     public String TenseEnglish { get; set; }
-
 }
 
 public partial class Verbs
 {
+    [Key]
+    public int rowid { get; set; }
     public String Infinitive { get; set; }
-
     public String Mood { get; set; }
-
     public String Tense { get; set; }
-
-    public String VerbEnglish { get; set; }
-
-    public String FirstSingular { get; set; }
-
-    public String SecondSingular { get; set; }
-
-    public String ThirdSingular { get; set; }
-
-    public String FirstPlural { get; set; }
-
-    public String SecondPlural { get; set; }
-
-    public String ThirdPlural { get; set; }
+    public String English { get; set; }
+    public String Person { get; set; }
+    public String Spanish { get; set; }
 }
