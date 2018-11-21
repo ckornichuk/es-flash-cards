@@ -1,9 +1,6 @@
-﻿using Microsoft.EntityFrameworkCore;
-using System;
-using System.Collections.Generic;
-using System.IO;
+﻿using System;
+using System.Diagnostics;
 using System.Linq;
-using System.Threading.Tasks;
 
 namespace EsFlashCards
 {
@@ -29,12 +26,17 @@ namespace EsFlashCards
 
                 foreach (var m in randomMapping)
                 {
+                    var swatch = Stopwatch.StartNew();
+
                     Console.WriteLine(m.English);
                     Console.ReadKey();
+
+                    swatch.Stop();
+
                     Console.WriteLine(m.Spanish);
+                    Console.WriteLine($"Took {swatch.Elapsed.ToString(@"ss\.ff")}");
                     Console.ReadKey();
 
-                    Console.WriteLine(Environment.NewLine);
                     Console.WriteLine(Environment.NewLine);
                 }
             }
