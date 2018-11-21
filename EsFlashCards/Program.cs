@@ -1,4 +1,5 @@
 ﻿using System;
+using System.Linq;
 
 namespace EsFlashCards
 {
@@ -6,7 +7,13 @@ namespace EsFlashCards
     {
         static void Main(string[] args)
         {
-            Console.WriteLine("Hello World!");
+            using (VocabContext context = new VocabContext())
+            {
+                context.Gerunds
+                    .Select(v => v.Infinitive)
+                    .ToList()
+                    .ForEach(Console.WriteLine);
+            }
         }
     }
 }
