@@ -14,6 +14,7 @@ namespace EsFlashCards
         public DbSet<PastParticiples> PastParticiples { get; set; }
         public DbSet<Tenses> Tenses { get; set; }
         public DbSet<Verbs> Verbs { get; set; }
+        public DbSet<TopVerbs> TopVerbs { get; set; }
 
         protected override void OnConfiguring(DbContextOptionsBuilder optionsBuilder)
         {
@@ -21,6 +22,13 @@ namespace EsFlashCards
             optionsBuilder.UseSqlite($@"Data Source=..\..\..\vocab.db");
         }
     }
+}
+
+public class TopVerbs
+{
+    [Key]
+    public int rowid { get; set; }
+    public string Infinitive { get; set; }
 }
 
 public class Pronouns

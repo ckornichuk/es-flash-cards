@@ -17,6 +17,7 @@ namespace EsFlashCards
 
                 var mapping = from verb in context.Verbs
                               where verb.Mood == "Indicativo" && verb.Tense == "Presente"
+                              join topVerbs in context.TopVerbs on verb.Infinitive equals topVerbs.Infinitive
                               join pronoun in context.Pronouns on verb.Person equals pronoun.Person
                               select new
                               {
@@ -32,6 +33,9 @@ namespace EsFlashCards
                     Console.ReadKey();
                     Console.WriteLine(m.Spanish);
                     Console.ReadKey();
+
+                    Console.WriteLine(Environment.NewLine);
+                    Console.WriteLine(Environment.NewLine);
                 }
             }
         }
