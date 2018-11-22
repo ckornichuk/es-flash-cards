@@ -4,6 +4,7 @@ using System.Diagnostics;
 using System.Globalization;
 using System.IO;
 using System.Linq;
+using System.Text;
 
 namespace EsFlashCards
 {
@@ -59,34 +60,34 @@ namespace EsFlashCards
                               };
                 }
 
-                
-
                 var randomMapping = mapping.OrderBy(product => r.Next());
 
                 HashSet<string> toWorkOn = new HashSet<string>();
 
-                int i = 0;
+                int count = 0;
+                var swatch = Stopwatch.StartNew();
                 foreach (var m in randomMapping)
                 {
-                    var swatch = Stopwatch.StartNew();
-
                     Console.WriteLine(m.English);
-                    Console.ReadLine();
-
-                    swatch.Stop();
+                    var guess = Console.ReadLine();
 
                     Console.WriteLine(m.Spanish);
-                    Console.WriteLine($"Took {swatch.Elapsed.ToString(@"ss\.ff")}");
-                    Console.WriteLine($"Did you get it wrong? (Press Y)");
-                    var response = Console.ReadLine();
-                    if (response.ToLower() == "y")
+                    if (guess.ToLower() != m.Spanish.RemoveDiacritics())
                     {
-                        toWorkOn.Add(m.Infinitive);
+                        Console.Write("Incorrect.\nAdd to list? (Y/N):");
+                        var addToList = Console.ReadLine();
+
+                        if (addToList.ToLower() == "y")
+                            toWorkOn.Add(m.Infinitive);
+                    }
+                    else
+                    {
+                        Console.WriteLine("Correct!");
                     }
 
-                    if (i % 5 == 0)
+                    if (count % 10 == 0)
                     {
-                        Console.WriteLine("Want to stop? (Press Y)");
+                        Console.Write("Want to stop? (Y/N):");
                         var isStop = Console.ReadLine();
                         if (isStop.ToLower() == "y")
                         {
@@ -94,14 +95,32 @@ namespace EsFlashCards
                         }
                     }
                     Console.WriteLine("\n");
-                    i++;
+                    count++;
                 }
 
                 Console.WriteLine("Complete!");
+                Console.WriteLine($"Average response time: {swatch.Elapsed.Divide(count).ToString(@"ss\.ff")}");
                 Console.WriteLine("You need to work on: " + string.Join(',', toWorkOn));
                 File.WriteAllLines($@"C:\Users\Chris\source\spanish-words\{DateTime.Now.ToString("yyyyMMddHHmmss")}.txt", toWorkOn);
                 Console.ReadLine();
             }
+        }
+
+        static string RemoveDiacritics(this string text)
+        {
+            var normalizedString = text.Normalize(NormalizationForm.FormD);
+            var stringBuilder = new StringBuilder();
+
+            foreach (var c in normalizedString)
+            {
+                var unicodeCategory = CharUnicodeInfo.GetUnicodeCategory(c);
+                if (unicodeCategory != UnicodeCategory.NonSpacingMark)
+                {
+                    stringBuilder.Append(c);
+                }
+            }
+
+            return stringBuilder.ToString().Normalize(NormalizationForm.FormC);
         }
     }
 
