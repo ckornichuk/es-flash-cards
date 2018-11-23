@@ -12,122 +12,67 @@ namespace EsFlashCards
     {
         static void Main(string[] args)
         {
-            Console.WriteLine("Filepath of existing file to read from?");
-            var existingFile = Console.ReadLine().Replace("\"","");
-            List<string> existingWords = new List<string>();
-            if (existingFile.Length > 0)
-            {
-                if (!File.Exists(existingFile))
-                {
-                    Console.WriteLine("Couldn't find the file!");
-                }
-                else
-                {
-                    existingWords = File.ReadAllLines(existingFile).ToList();
-                }
-            }
-
+            Config config = new Config();
+            Random r = new Random();
             using (VocabContext context = new VocabContext())
             {
-                var r = new Random();
+                config.Moods = Helper.RequestMoods(context);
+                config.Tenses = Helper.RequestTenses(context);
+                config.Words = GetWords(context);
 
-                IQueryable<Vocab> mapping;
-
-                if (existingWords.Count > 0)
-                {
-                    mapping = from verb in context.Verbs
-                              where verb.Mood == "Indicativo" && verb.Tense == "Presente"
-                              join infinitive in existingWords on verb.Infinitive equals infinitive
-                              join pronoun in context.Pronouns on verb.Person equals pronoun.Person
-                              select new Vocab
-                              {
-                                  English = pronoun.English + " " + verb.English,
-                                  Spanish = pronoun.Spanish + " " + verb.Spanish,
-                                  Infinitive = verb.Infinitive
-                              };
-                }
-                else
-                {
-                    mapping = from verb in context.Verbs
-                              where verb.Mood == "Indicativo" && verb.Tense == "Presente"
-                              join topVerbs in context.TopVerbs on verb.Infinitive equals topVerbs.Infinitive
-                              join pronoun in context.Pronouns on verb.Person equals pronoun.Person
-                              select new Vocab
-                              {
-                                  English = pronoun.English + " " + verb.English,
-                                  Spanish = pronoun.Spanish + " " + verb.Spanish,
-                                  Infinitive = verb.Infinitive
-                              };
-                }
-
-                var randomMapping = mapping.OrderBy(product => r.Next());
-
-                HashSet<string> toWorkOn = new HashSet<string>();
-
-                int count = 0;
-                var swatch = Stopwatch.StartNew();
-                foreach (var m in randomMapping)
-                {
-                    Console.WriteLine(m.English);
-                    var guess = Console.ReadLine();
-
-                    Console.WriteLine(m.Spanish);
-                    if (guess.ToLower() != m.Spanish.RemoveDiacritics())
+                IQueryable<Vocab> mapping = 
+                    from verb in context.Verbs
+                    join mood in context.Moods on verb.Mood equals mood.Mood
+                    join tense in context.Tenses on verb.Tense equals tense.Tense
+                    join infinitive in config.Words on verb.Infinitive equals infinitive
+                    join enMood in config.Moods on mood.MoodEnglish equals enMood
+                    join enTense in config.Tenses on tense.TenseEnglish equals enTense
+                    join pronoun in context.Pronouns on verb.Person equals pronoun.Person
+                    select new Vocab
                     {
-                        Console.Write("Incorrect.\nAdd to list? (Y/N):");
-                        var addToList = Console.ReadLine();
+                        PhraseEnglish = pronoun.English + " " + verb.English,
+                        PhraseSpanish = pronoun.Spanish + " " + verb.Spanish,
+                        Word = verb.Infinitive
+                    };
 
-                        if (addToList.ToLower() == "y")
-                            toWorkOn.Add(m.Infinitive);
-                    }
-                    else
-                    {
-                        Console.WriteLine("Correct!");
-                    }
+                var randomizedVocab = mapping.ToList().OrderBy(product => r.Next());
 
-                    if (count % 10 == 0)
-                    {
-                        Console.Write("Want to stop? (Y/N):");
-                        var isStop = Console.ReadLine();
-                        if (isStop.ToLower() == "y")
-                        {
-                            break;
-                        }
-                    }
-                    Console.WriteLine("\n");
-                    count++;
+                Terminator terminator = new Terminator();
+                Proctor proctor = new Proctor();
+                foreach (var vocab in randomizedVocab)
+                {
+                    Tester tester = new Tester(vocab);
+                    bool isCorrect = tester.TestAndReturnResult();
+
+                    if (!isCorrect)
+                        proctor.HandleFailure(vocab.Word);
+
+                    if (terminator.DoTheyWantToStop())
+                        break;
                 }
 
                 Console.WriteLine("Complete!");
-                Console.WriteLine($"Average response time: {swatch.Elapsed.Divide(count).ToString(@"ss\.ff")}");
-                Console.WriteLine("You need to work on: " + string.Join(',', toWorkOn));
-                File.WriteAllLines($@"C:\Users\Chris\source\spanish-words\{DateTime.Now.ToString("yyyyMMddHHmmss")}.txt", toWorkOn);
+                Console.WriteLine("You need to work on: " + string.Join(',', proctor.WordsToWorkOn));
+                File.WriteAllLines($@"C:\Users\Chris\source\spanish-words\{DateTime.Now.ToString("yyyyMMddHHmmss")}.txt", proctor.WordsToWorkOn);
                 Console.ReadLine();
             }
         }
 
-        static string RemoveDiacritics(this string text)
+        private static List<string> GetWords(VocabContext context)
         {
-            var normalizedString = text.Normalize(NormalizationForm.FormD);
-            var stringBuilder = new StringBuilder();
-
-            foreach (var c in normalizedString)
+            Console.Write("Choose from file? (Y/N): ");
+            var choice = Console.ReadLine();
+            if (choice.ToLower() == "y")
             {
-                var unicodeCategory = CharUnicodeInfo.GetUnicodeCategory(c);
-                if (unicodeCategory != UnicodeCategory.NonSpacingMark)
-                {
-                    stringBuilder.Append(c);
-                }
+                Console.WriteLine("Filepath of existing file to read from?");
+                var existingFile = Console.ReadLine().Replace("\"", "");
+                return Helper.getWordsFromFile(existingFile);
             }
 
-            return stringBuilder.ToString().Normalize(NormalizationForm.FormC);
+            return context.TopVerbs
+                .Select(v => v.Infinitive)
+                .ToList();
         }
-    }
 
-    class Vocab
-    {
-        public string English { get; set; }
-        public string Spanish { get; set; }
-        public string Infinitive { get; set; }
     }
 }
