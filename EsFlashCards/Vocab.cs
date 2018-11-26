@@ -5,9 +5,10 @@ using System.Text;
 namespace EsFlashCards
 {
     class Vocab
-    {
+    {   
         public string PhraseEnglish { get; set; }
-        public string PhraseSpanish { get; set; }
+        public List<string> PhrasesSpanish { get; set; }
         public string Word { get; set; }
+        public Trials Trial { get; set; }
     }
 }

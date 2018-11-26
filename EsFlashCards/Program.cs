@@ -12,67 +12,72 @@ namespace EsFlashCards
     {
         static void Main(string[] args)
         {
-            Config config = new Config();
             Random r = new Random();
             using (VocabContext context = new VocabContext())
             {
-                config.Moods = Helper.RequestMoods(context);
-                config.Tenses = Helper.RequestTenses(context);
-                config.Words = GetWords(context);
+                Config config = new Config()
+                {
+                    Moods = Helper.RequestMoods(context),
+                    Tenses = Helper.RequestTenses(context),
+                };
+                var trials = Helper.GetWords(context, config.Tenses, config.Moods);
 
-                IQueryable<Vocab> mapping = 
-                    from verb in context.Verbs
-                    join mood in context.Moods on verb.Mood equals mood.Mood
-                    join tense in context.Tenses on verb.Tense equals tense.Tense
-                    join infinitive in config.Words on verb.Infinitive equals infinitive
-                    join enMood in config.Moods on mood.MoodEnglish equals enMood
-                    join enTense in config.Tenses on tense.TenseEnglish equals enTense
+                Console.Clear();
+
+                var allWords =
+                    from trial in trials
+                    join verb in context.Verbs on new
+                    {
+                        trial.Infinitive,
+                        trial.MoodId,
+                        trial.TenseId
+                    } equals new
+                    {
+                        verb.Infinitive,
+                        verb.MoodId,
+                        verb.TenseId
+                    }
                     join pronoun in context.Pronouns on verb.Person equals pronoun.Person
                     select new Vocab
                     {
                         PhraseEnglish = pronoun.English + " " + verb.English,
-                        PhraseSpanish = pronoun.Spanish + " " + verb.Spanish,
-                        Word = verb.Infinitive
+                        PhrasesSpanish = verb.Spanish.Split('/').Select(v => pronoun.Spanish + " " + v).ToList(),
+                        Word = verb.Infinitive,
+                        Trial = trial
                     };
 
-                var randomizedVocab = mapping.ToList().OrderBy(product => r.Next());
-
-                Terminator terminator = new Terminator();
+                var randomizedVocabs = allWords.ToList().OrderBy(product => r.Next());
+                
                 Proctor proctor = new Proctor();
-                foreach (var vocab in randomizedVocab)
+                int correctCount = 0;
+                foreach (var vocab in randomizedVocabs)
                 {
                     Tester tester = new Tester(vocab);
                     bool isCorrect = tester.TestAndReturnResult();
 
-                    if (!isCorrect)
-                        proctor.HandleFailure(vocab.Word);
+                    var result = context.Trials.SingleOrDefault(t => t.rowid == vocab.Trial.rowid);
+                    if (result != null)
+                    {
+                        if (isCorrect)
+                        {
+                            result.Pass = result.Pass + 1;
+                            correctCount++;
+                        }
 
-                    if (terminator.DoTheyWantToStop())
-                        break;
+                        result.Total = result.Total + 1;
+                        context.SaveChanges();
+                    }
+
+                    //if (!isCorrect)
+                    //    proctor.HandleFailure(vocab.Word);
                 }
 
                 Console.WriteLine("Complete!");
-                Console.WriteLine("You need to work on: " + string.Join(',', proctor.WordsToWorkOn));
-                File.WriteAllLines($@"C:\Users\Chris\source\spanish-words\{DateTime.Now.ToString("yyyyMMddHHmmss")}.txt", proctor.WordsToWorkOn);
+                Console.WriteLine($"{correctCount} / {randomizedVocabs.Count()} correct.");
+                Console.WriteLine($"{(double)correctCount / (double)randomizedVocabs.Count()}%");
+                //File.WriteAllLines($@"C:\Users\Chris\source\spanish-words\{DateTime.Now.ToString("yyyyMMddHHmmss")}.txt", proctor.WordsToWorkOn);
                 Console.ReadLine();
             }
         }
-
-        private static List<string> GetWords(VocabContext context)
-        {
-            Console.Write("Choose from file? (Y/N): ");
-            var choice = Console.ReadLine();
-            if (choice.ToLower() == "y")
-            {
-                Console.WriteLine("Filepath of existing file to read from?");
-                var existingFile = Console.ReadLine().Replace("\"", "");
-                return Helper.getWordsFromFile(existingFile);
-            }
-
-            return context.TopVerbs
-                .Select(v => v.Infinitive)
-                .ToList();
-        }
-
     }
 }

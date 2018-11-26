@@ -9,6 +9,7 @@ namespace EsFlashCards
 {
     static class Helper
     {
+        private static double forceCast = 1.0000001;
         public static IEnumerable<string> RequestTenses(VocabContext context)
         {
             var validTenses = context.Tenses.Select(m => m.TenseEnglish).ToList();
@@ -70,6 +71,51 @@ namespace EsFlashCards
             }
 
             return stringBuilder.ToString().Normalize(NormalizationForm.FormC);
+        }
+
+        public static IEnumerable<Trials> GetWords(VocabContext context, IEnumerable<string> tenses, IEnumerable<string> moods)
+        {
+            //Console.Write("Choose from file? (Y/N): ");
+            //var choice = Console.ReadLine();
+            //if (choice.ToLower() == "y")
+            //{
+            //    Console.WriteLine("Filepath of existing file to read from?");
+            //    var existingFile = Console.ReadLine().Replace("\"", "");
+            //    return getWordsFromFile(existingFile);
+            //}
+
+            Console.Write("How many strong words? ");
+            var strongCount = Int32.Parse(Console.ReadLine());
+            Console.Write("How many weak words? ");
+            var weakCount = Int32.Parse(Console.ReadLine());
+            Console.Write("How many new words? ");
+            var newCount = Int32.Parse(Console.ReadLine());
+
+            var subset = from trial in context.Trials
+                         join mood in context.Moods on trial.MoodId equals mood.rowid
+                         join tense in context.Tenses on trial.TenseId equals tense.rowid
+                         where tenses.Contains(tense.TenseEnglish) && moods.Contains(mood.MoodEnglish)
+                         select trial;
+
+            var strongs = (from t in subset
+                           where t.Total > 0
+                             && (t.Pass * forceCast) / t.Total >= .7
+                           orderby Guid.NewGuid()
+                           select t).Take(strongCount);
+
+            var weaks = (from t in subset
+                         where t.Total > 0
+                             && (t.Pass * forceCast) / t.Total < .7
+                         orderby Guid.NewGuid()
+                         select t).Take(weakCount);
+
+            
+            var news = (from t in subset
+                        where t.Total == 0
+                        orderby Guid.NewGuid()
+                        select t).Take(newCount);
+
+            return strongs.Union(weaks).Union(news);
         }
     }
 }
